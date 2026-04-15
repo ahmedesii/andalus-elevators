@@ -1,19 +1,12 @@
 import streamlit as st
 import pandas as pd
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from io import BytesIO
 
-# إعداد الصفحة
-st.set_page_config(page_title="نظام مصاعد الأندلس - أحمد عيسى", layout="wide")
+# 1. إعداد الصفحة والعنوان
+st.set_page_config(page_title="نظام مصاعد الأندلس", layout="wide")
 
-LOG_FILE = "andalus_log.xlsx"
-
-# وظيفة لحفظ البيانات (داخل جلسة العمل)
-if 'main_data' not in st.session_state:
-    st.session_state.main_data = []
-
-# بيانات المدارس
+# 2. تعريف بيانات المدارس والمصاعد (تأكد من وجود كل الفروع)
 school_data = {
     "Hamdaniya 1": {"count": 2, "type": "assembly"},
     "Hamdaniya 2": {"count": 2, "type": "Alfa"},
@@ -30,47 +23,67 @@ school_data = {
     "Shatea National (Mawheba)": {"count": 4, "type": "Alfa Asia"}
 }
 
-st.markdown(f"<h1>نظام الإشراف الفني - المهندس أحمد عيسى</h1>", unsafe_allow_html=True)
+# 3. واجهة البرنامج
+st.title("🏗️ نظام الإشراف الفني - المهندس أحمد عيسى")
+st.write(f"تاريخ اليوم: {datetime.now().strftime('%Y-%m-%d')}")
 
-selected_school = st.selectbox("🏨 اختر الفرع:", list(school_data.keys()))
+# 4. اختيار الفرع
+selected_school = st.selectbox("🏨 اختر فرع مدارس الأندلس:", list(school_data.keys()))
 num_elevators = school_data[selected_school]["count"]
-default_type = school_data[selected_school]["type"]
 
-temp_list = []
-tabs = st.tabs([f"🔹 مصعد {i+1}" for i in range(num_elevators)])
+# 5. إنشاء المخزن المؤقت للبيانات
+if 'log_entries' not in st.session_state:
+    st.session_state.log_entries = []
+
+# 6. توزيع المربعات (Tabs) حسب عدد المصاعد
+st.subheader(f"تسجيل بيانات مصاعد فرع: {selected_school}")
+tabs = st.tabs([f"مصعد {i+1}" for i in range(num_elevators)])
+
+current_entries = []
 
 for i, tab in enumerate(tabs):
     with tab:
         col1, col2 = st.columns(2)
         with col1:
-            status = st.selectbox("الحالة", ["✅ يعمل", "⚠️ عطل", "🛠️ صيانة"], key=f"s_{i}")
+            status = st.radio(f"حالة المصعد {i+1}", ["✅ يعمل", "⚠️ عطل", "🛠️ تحت الصيانة"], key=f"status_{selected_school}_{i}")
         with col2:
-            tech = st.text_area("📝 ملاحظات فنية:", key=f"t_{i}")
+            notes = st.text_area(f"ملاحظات فنية للمصعد {i+1}:", placeholder="اكتب حالة المصعد أو الأعطال هنا...", key=f"notes_{selected_school}_{i}")
         
-        temp_list.append({
+        current_entries.append({
             "التاريخ": datetime.now().strftime("%Y-%m-%d"),
             "الفرع": selected_school,
             "المصعد": i+1,
             "الحالة": status,
-            "الملاحظات": tech
+            "الملاحظات": notes
         })
 
-# زرار الحفظ والتحميل
+# 7. أزرار الحفظ والتحميل
 st.divider()
-if st.button("✅ اعتماد البيانات الحالية"):
-    st.session_state.main_data.extend(temp_list)
-    st.success("تم الحفظ في ذاكرة البرنامج المؤقتة")
+col_save, col_del = st.columns(2)
 
-if st.session_state.main_data:
-    df_export = pd.DataFrame(st.session_state.main_data)
+with col_save:
+    if st.button("💾 حفظ الزيارات الحالية"):
+        st.session_state.log_entries.extend(current_entries)
+        st.success(f"تم حفظ بيانات {num_elevators} مصاعد بنجاح!")
+
+with col_del:
+    if st.button("🗑️ مسح السجل المؤقت"):
+        st.session_state.log_entries = []
+        st.warning("تم مسح السجل")
+
+# 8. عرض السجل وإمكانية التحميل
+if st.session_state.log_entries:
+    st.subheader("📋 السجل الحالي (قبل التحميل)")
+    df = pd.DataFrame(st.session_state.log_entries)
+    st.dataframe(df, use_container_width=True)
     
-    # تحويل البيانات لملف اكسيل في الرامات (عشان يتحمل)
+    # تحويل لملف إكسيل للتحميل
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_export.to_excel(writer, index=False)
+        df.to_excel(writer, index=False)
     
     st.download_button(
-        label="📥 تحميل سجل الزيارات كملف Excel",
+        label="📥 تحميل سجل الزيارات (Excel)",
         data=output.getvalue(),
         file_name=f"Andalus_Report_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
