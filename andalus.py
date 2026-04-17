@@ -1,59 +1,129 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
-from streamlit_gsheets import GSheetsConnection
+from datetime import date, timedelta
 
-# إعداد الصفحة
-st.set_page_config(page_title="مدارس الأندلس - إدارة المصاعد", layout="wide")
+# ===== إعداد الصفحة =====
+st.set_page_config(page_title="ANDALUS SCHOOL", layout="wide")
 
-# الربط مع جوجل شيت (للتخزين الدائم)
-conn = st.connection("gsheets", type=GSheetsConnection)
+# ===== عنوان البرنامج =====
+st.title("🏫 ANDALUS SCHOOL - Elevator Management System")
 
-st.title("🏫 نظام إدارة صيانة مصاعد مدارس الأندلس")
-
-# قائمة المدارس وتوزيع المصاعد
+# ===== المدارس =====
 schools = {
-    "الحمدانية 1": 2, "الحمدانية 2": 2, "الحمدانية 3": 3, "الحمدانية 4": 4,
-    "أبحر 1": 4, "الروضة 1": 4, "روضة الأندلس الصغير": 2,
-    "المنار 1": 4, "الفيحاء 1": 4, "الفيحاء 2": 4,
-    "الزهراء": 1, "الشاطئ دولي": 7, "الشاطئ عام": 4
+    "Hamdaniya 1": 2,
+    "Hamdaniya 2": 2,
+    "Hamdaniya 3": 3,
+    "Hamdaniya 4": 4,
+    "Obhur 1": 4,
+    "Rawdhah 1": 4,
+    "Rawdhah little andalus": 2,
+    "Manar 1": 4,
+    "Fayhaa 1": 4,
+    "Fayhaa 2": 4,
+    "Zahraa": 1,
+    "Shatea International": 7,
+    "Shatea National": 4
 }
 
-# القائمة الجانبية
-school = st.sidebar.selectbox("اختر المدرسة", list(schools.keys()))
-lift = st.sidebar.selectbox("اختر المصعد", [f"مصعد {i+1}" for i in range(schools[school])])
+support_companies = ["شركة 1", "شركة 2", "شركة 3", "شركة 4", "شركة 5"]
 
-# إدخال البيانات الفنية
-col1, col2 = st.columns(2)
-with col1:
-    status = st.selectbox("حالة المصعد الحالية", ["يعمل", "لا يعمل"])
-    fault_desc = st.text_area("وصف العطل (مثل نقاط T1, T2...) أو الملاحظات")
-with col2:
-    service_date = st.date_input("تاريخ الفحص", value=date.today())
-    parts = st.text_input("قطع الغيار المستخدمة")
+# ===== القائمة الجانبية =====
+st.sidebar.title("🏫 المدارس")
+school = st.sidebar.selectbox("اختار المدرسة", list(schools.keys()))
 
-# زر الحفظ المطور
-if st.button("💾 حفظ التقرير في السجل العام"):
-    new_data = pd.DataFrame([{
-        "المدرسة": school, "المصعد": lift, "التاريخ": str(service_date),
-        "الحالة": status, "الملاحظات": fault_desc, "قطع الغيار": parts
-    }])
-    
+lifts = [f"{school} - Lift {i+1}" for i in range(schools[school])]
+lift = st.sidebar.selectbox("اختار المصعد", lifts)
+
+st.subheader(f"🛗 {lift}")
+
+# ===== Tabs =====
+tabs = st.tabs([
+    "🟦 البيانات",
+    "🟩 الحالة",
+    "🟨 الصيانة",
+    "🟥 الأعطال",
+    "🟪 الصور",
+    "🟫 Notes"
+])
+
+# ===== البيانات =====
+with tabs[0]:
+    etype = st.selectbox("نوع المصعد", ["Schindler","Otis","Kone","Other"])
+    controller = st.text_input("نوع الكنترول")
+    floors = st.number_input("عدد الأدوار",1,50)
+    company = st.selectbox("شركة الدعم", support_companies)
+
+# ===== الحالة =====
+with tabs[1]:
+    status = st.selectbox("حالة المصعد", ["يعمل","لا يعمل"])
+    ups = st.selectbox("UPS", ["يعمل","لا يعمل"])
+    wires = st.selectbox("حالة الوايرات", ["جيدة","متوسطة","سيئة"])
+    light = st.selectbox("إضاءة الكابينة", ["جيدة","ضعيفة","لا تعمل"])
+    power = st.selectbox("انقطاع الكهرباء", ["لا يوجد","متكرر"])
+
+# ===== الصيانة =====
+with tabs[2]:
+    last_service = st.date_input("آخر صيانة", value=date.today())
+    next_service = st.date_input("الصيانة القادمة")
+
+    if next_service <= date.today() + timedelta(days=7):
+        st.warning("⚠️ تنبيه: موعد الصيانة قريب!")
+
+# ===== الأعطال =====
+with tabs[3]:
+    fault = st.text_area("وصف العطل")
+    spare = st.text_input("قطع الغيار المستخدمة")
+    fixed = st.selectbox("تم الإصلاح", ["نعم","لا"])
+    fault_date = st.date_input("تاريخ العطل")
+
+# ===== الصور =====
+with tabs[4]:
+    image = st.file_uploader("ارفع صورة العطل", type=["jpg","png"])
+
+# ===== Notes =====
+with tabs[5]:
+    notes = st.text_area("ملاحظات عامة")
+
+# ===== حفظ البيانات =====
+if st.button("💾 حفظ البيانات"):
+    data = {
+        "School": school,
+        "Lift": lift,
+        "Type": etype,
+        "Controller": controller,
+        "Floors": floors,
+        "Company": company,
+        "Status": status,
+        "UPS": ups,
+        "Wires": wires,
+        "Light": light,
+        "Power": power,
+        "Last Service": last_service,
+        "Next Service": next_service,
+        "Fault": fault,
+        "Spare Parts": spare,
+        "Fixed": fixed,
+        "Fault Date": fault_date,
+        "Notes": notes
+    }
+
+    df = pd.DataFrame([data])
+
     try:
-        # قراءة البيانات القديمة وإضافة الجديدة في Google Sheets
-        existing_df = conn.read()
-        updated_df = pd.concat([existing_df, new_data], ignore_index=True)
-        conn.update(data=updated_df)
-        st.success("✅ تم حفظ البيانات أونلاين بنجاح!")
+        old = pd.read_csv("data.csv")
+        df = pd.concat([old, df], ignore_index=True)
     except:
-        # في حال كانت أول مرة أو لم يتم الربط بعد
-        st.warning("⚠️ تأكد من وضع رابط Google Sheet في إعدادات Secrets")
+        pass
 
-# عرض آخر 5 سجلات للإدارة
-st.divider()
-st.subheader("📜 آخر التقارير المسجلة")
+    df.to_csv("data.csv", index=False)
+
+    st.success("✅ تم حفظ البيانات بنجاح")
+
+# ===== عرض البيانات =====
+st.subheader("📊 البيانات المسجلة")
+
 try:
-    df = conn.read()
-    st.dataframe(df.tail(5), use_container_width=True)
+    df = pd.read_csv("data.csv")
+    st.dataframe(df)
 except:
-    st.info("لا توجد بيانات مسجلة حالياً.")
+    st.info("لا توجد بيانات حتى الآن")
