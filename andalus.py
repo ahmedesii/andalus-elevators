@@ -5,10 +5,37 @@ from datetime import date, timedelta
 # ===== إعداد الصفحة =====
 st.set_page_config(page_title="ANDALUS SCHOOL", layout="wide")
 
+# ===== تحسين الشكل =====
+st.markdown("""
+<style>
+body {
+    font-weight: 500;
+}
+.sidebar .sidebar-content {
+    background-color: #0E6BA8;
+}
+.stSelectbox label {
+    font-weight: bold;
+}
+.school-box {
+    background-color: #0E6BA8;
+    color: white;
+    padding: 8px;
+    border-radius: 8px;
+}
+.lift-box {
+    background-color: #F18F01;
+    color: white;
+    padding: 8px;
+    border-radius: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ===== عنوان البرنامج =====
 st.title("🏫 ANDALUS SCHOOL - Elevator Management System")
 
-# ===== المدارس =====
+# ===== المدارس (تم التعديل) =====
 schools = {
     "Hamdaniya 1": 2,
     "Hamdaniya 2": 2,
@@ -21,8 +48,9 @@ schools = {
     "Fayhaa 1": 4,
     "Fayhaa 2": 4,
     "Zahraa": 1,
-    "Shatea International": 7,
-    "Shatea National": 4
+    "مدرسة الموهبات": 7,   # بدل Shatea International
+    "Shatea National": 4,
+    "مدرسة عالمي": 3      # إضافة جديدة
 }
 
 support_companies = ["شركة 1", "شركة 2", "شركة 3", "شركة 4", "شركة 5"]
@@ -34,7 +62,8 @@ school = st.sidebar.selectbox("اختار المدرسة", list(schools.keys()))
 lifts = [f"{school} - Lift {i+1}" for i in range(schools[school])]
 lift = st.sidebar.selectbox("اختار المصعد", lifts)
 
-st.subheader(f"🛗 {lift}")
+st.markdown(f"<div class='school-box'>🏫 {school}</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='lift-box'>🛗 {lift}</div>", unsafe_allow_html=True)
 
 # ===== Tabs =====
 tabs = st.tabs([
@@ -48,14 +77,26 @@ tabs = st.tabs([
 
 # ===== البيانات =====
 with tabs[0]:
-    etype = st.selectbox("نوع المصعد", ["Schindler","Otis","Kone","Other"])
+    etype = st.selectbox("نوع المصعد", [
+        "Schindler",
+        "Mitsubishi",
+        "STEP AS380",
+        "Monarch",
+        "تجميع",
+        "أخرى"
+    ])
     controller = st.text_input("نوع الكنترول")
     floors = st.number_input("عدد الأدوار",1,50)
     company = st.selectbox("شركة الدعم", support_companies)
 
 # ===== الحالة =====
 with tabs[1]:
-    status = st.selectbox("حالة المصعد", ["يعمل","لا يعمل"])
+    status = st.selectbox("حالة المصعد", [
+        "يعمل",
+        "لا يعمل",
+        "كنترول الطوارئ",
+        "الصيانة"
+    ])
     ups = st.selectbox("UPS", ["يعمل","لا يعمل"])
     wires = st.selectbox("حالة الوايرات", ["جيدة","متوسطة","سيئة"])
     light = st.selectbox("إضاءة الكابينة", ["جيدة","ضعيفة","لا تعمل"])
@@ -69,12 +110,27 @@ with tabs[2]:
     if next_service <= date.today() + timedelta(days=7):
         st.warning("⚠️ تنبيه: موعد الصيانة قريب!")
 
-# ===== الأعطال =====
+# ===== الأعطال + HISTORY =====
 with tabs[3]:
     fault = st.text_area("وصف العطل")
     spare = st.text_input("قطع الغيار المستخدمة")
     fixed = st.selectbox("تم الإصلاح", ["نعم","لا"])
     fault_date = st.date_input("تاريخ العطل")
+
+    if "history" not in st.session_state:
+        st.session_state.history = []
+
+    if st.button("➕ إضافة العطل إلى السجل"):
+        st.session_state.history.append({
+            "Fault": fault,
+            "Spare": spare,
+            "Fixed": fixed,
+            "Date": fault_date
+        })
+
+    if st.session_state.history:
+        st.subheader("📜 سجل الأعطال")
+        st.table(pd.DataFrame(st.session_state.history))
 
 # ===== الصور =====
 with tabs[4]:
